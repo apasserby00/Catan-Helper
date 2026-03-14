@@ -1,6 +1,6 @@
-# Catan Helper
+# Catan Clock
 
-Mobile-first React PWA for Catan game timing, built with Vite, TypeScript, Tailwind, Radix-based shadcn-style UI primitives, and Dexie.
+Mobile-first React PWA for timing Catan games, built with Vite, TypeScript, Tailwind, Radix-based shadcn-style UI primitives, and Dexie.
 
 ## Features
 
@@ -12,7 +12,7 @@ Mobile-first React PWA for Catan game timing, built with Vite, TypeScript, Tailw
   - `localStorage` for user settings
   - IndexedDB via Dexie for active session restore and last 30 finished games
 - PWA manifest and service worker for GitHub Pages hosting
-- Best-effort iPhone background handling with timestamp reconciliation on return
+- iPhone background handling that catches up when you return to the app
 
 ## Scripts
 

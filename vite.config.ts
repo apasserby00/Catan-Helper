@@ -11,9 +11,9 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       includeAssets: ["icon-192.png", "icon-512.png"],
       manifest: {
-        name: "Catan Helper",
+        name: "Catan Clock",
         short_name: "Catan",
-        description: "Mobile-first Catan timer with music, turn alerts, and history.",
+        description: "A simple Catan timer with music, turn reminders, and history.",
         theme_color: "#e8d7b9",
         background_color: "#f4ecdb",
         display: "standalone",

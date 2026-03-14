@@ -6,7 +6,7 @@ class CatanHelperDatabase extends Dexie {
   history!: Table<GameHistoryRecord, string>;
 
   constructor() {
-    super("CatanHelperDatabase");
+    super("CatanClockDatabase");
     this.version(1).stores({
       activeSession: "id, status, startedAt",
       history: "id, startedAt, finishedAt"

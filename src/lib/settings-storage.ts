@@ -1,6 +1,6 @@
 import type { AppSettings } from "@/types";
 
-const SETTINGS_KEY = "catan-helper:settings";
+const SETTINGS_KEY = "catan-clock:settings";
 
 export const DEFAULT_SETTINGS: AppSettings = {
   musicEnabled: false,

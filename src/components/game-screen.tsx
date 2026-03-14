@@ -1,4 +1,4 @@
-import { History, Pause, Play, Settings2, TimerReset, Trophy } from "lucide-react";
+import { History, Pause, Play, Settings2, TimerReset, Trophy, Volume2 } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { ALERT_SOUNDS, MUSIC_PRESETS } from "@/config/audio-presets";
 import { useElapsedTime, useGame } from "@/app/game-store";
@@ -43,7 +43,7 @@ export function GameScreen() {
   const [finishOpen, setFinishOpen] = useState(false);
 
   if (!hydrated) {
-    return <main className="flex min-h-screen items-center justify-center p-6 text-sm text-sand-800">Loading game state...</main>;
+    return <main className="flex min-h-screen items-center justify-center p-6 text-sm text-sand-800">Getting things ready...</main>;
   }
 
   const isRunning = session?.status === "running";
@@ -52,40 +52,182 @@ export function GameScreen() {
   return (
     <main className="min-h-screen px-4 py-5 text-ink">
       <div className="mx-auto flex min-h-[calc(100vh-2.5rem)] max-w-md flex-col gap-4">
-        <section className="rounded-[2rem] border border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.6),rgba(245,232,206,0.7))] p-5 shadow-float">
-          <p className="font-body text-xs uppercase tracking-[0.28em] text-sand-700">Catan Helper</p>
-          <div className="mt-3 flex items-end justify-between gap-3">
-            <div>
-              <h1 className="font-display text-4xl leading-none text-ink">Game Clock</h1>
-              <p className="mt-2 max-w-[18rem] text-sm text-sand-800">
-                Best-effort iPhone PWA. Background alerts can drift while locked, but the app reconciles immediately when you return.
-              </p>
-            </div>
-            <div className="rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-moss">
-              {session ? session.status : "idle"}
-            </div>
+        <div className="flex items-center justify-between px-1">
+          <p className="font-display text-xl leading-none text-ink">Catan Clock</p>
+          <div className="flex items-center gap-2">
+            <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+              <SheetTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Open game history"
+                  className="rounded-full border border-sand-300 bg-white/80 p-3 text-sand-800 shadow-sm transition hover:bg-sand-50"
+                >
+                  <History className="h-4 w-4" />
+                </button>
+              </SheetTrigger>
+              <SheetContent className="max-h-[88vh] overflow-y-auto">
+                <SheetTitle className="font-display text-3xl text-ink">Past games</SheetTitle>
+                <SheetDescription className="mt-2 text-sm text-sand-800">
+                  Your last 30 finished games are saved on this device.
+                </SheetDescription>
+
+                <div className="mt-5 space-y-3">
+                  {history.length === 0 && (
+                    <div className="rounded-[1.5rem] border border-dashed border-sand-300 bg-white/70 px-4 py-5 text-sm text-sand-800">
+                      You have not finished a game yet.
+                    </div>
+                  )}
+                  {history.map((record) => (
+                    <div key={record.id} className="rounded-[1.5rem] border border-sand-200 bg-white/80 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="font-display text-2xl text-ink">{formatDuration(record.durationMs)}</div>
+                          <p className="mt-1 text-sm text-sand-800">
+                            {record.winner ? `Winner: ${record.winner}` : "No winner saved"}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          aria-label={`Delete history ${record.id}`}
+                          className="rounded-full bg-sand-100 px-3 py-2 text-xs font-semibold text-sand-800"
+                          onClick={() => void deleteHistoryRecord(record.id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                      <p className="mt-3 text-xs text-sand-700">Started: {formatDateTime(record.startedAt)}</p>
+                      <p className="mt-1 text-xs text-sand-700">Finished: {formatDateTime(record.finishedAt)}</p>
+                      <p className="mt-2 text-xs text-sand-700">
+                        {record.turnTimerEnabled ? `${record.turnDurationSec}-second turn reminder` : "Turn reminder off"} |{" "}
+                        {record.musicEnabled ? `Music: ${record.musicPresetId}` : "Music off"} | Sound: {record.turnSoundId}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+              <SheetTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Open settings"
+                  className="rounded-full border border-sand-300 bg-white/80 p-3 text-sand-800 shadow-sm transition hover:bg-sand-50"
+                >
+                  <Settings2 className="h-4 w-4" />
+                </button>
+              </SheetTrigger>
+              <SheetContent className="max-h-[88vh] overflow-y-auto">
+                <SheetTitle className="font-display text-3xl text-ink">Settings</SheetTitle>
+                <SheetDescription className="mt-2 text-sm text-sand-800">
+                  Choose how the clock sounds and remembers your games.
+                </SheetDescription>
+
+                <div className="mt-6 space-y-5">
+                  <SettingRow
+                    label="Background music"
+                    description="Play soft music while the game is running."
+                    control={
+                      <Switch
+                        checked={settings.musicEnabled}
+                        onCheckedChange={(checked) =>
+                          setSettings((current) => ({
+                            ...current,
+                            musicEnabled: checked
+                          }))
+                        }
+                      />
+                    }
+                  />
+
+                  <LabeledSelect
+                    label="Music style"
+                    value={settings.musicPresetId}
+                    onValueChange={(value) =>
+                      setSettings((current) => ({
+                        ...current,
+                        musicPresetId: value
+                      }))
+                    }
+                    options={MUSIC_PRESETS.map((preset) => ({ value: preset.id, label: preset.label }))}
+                  />
+
+                  <SettingRow
+                    label="Turn reminder"
+                    description="Play a sound when it is time to pass the turn."
+                    control={
+                      <Switch
+                        checked={settings.turnTimerEnabled}
+                        onCheckedChange={(checked) =>
+                          setSettings((current) => ({
+                            ...current,
+                            turnTimerEnabled: checked
+                          }))
+                        }
+                      />
+                    }
+                  />
+
+                  <LabeledSelect
+                    label="Time per turn"
+                    value={String(settings.turnDurationSec)}
+                    onValueChange={(value) =>
+                      setSettings((current) => ({
+                        ...current,
+                        turnDurationSec: Number(value)
+                      }))
+                    }
+                    options={[
+                      { value: "60", label: "1 minute" },
+                      { value: "75", label: "1 minute 15 seconds" },
+                      { value: "90", label: "1 minute 30 seconds" },
+                      { value: "120", label: "2 minutes" }
+                    ]}
+                  />
+
+                  <LabeledSelect
+                    label="Reminder sound"
+                    value={settings.turnSoundId}
+                    onValueChange={(value) =>
+                      setSettings((current) => ({
+                        ...current,
+                        turnSoundId: value
+                      }))
+                    }
+                    options={ALERT_SOUNDS.map((sound) => ({ value: sound.id, label: sound.label }))}
+                  />
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
-        </section>
+        </div>
 
         <Card className="flex-1 bg-[linear-gradient(180deg,rgba(255,252,247,0.95),rgba(244,234,213,0.9))]">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-sand-700">Elapsed Play</p>
+              <p className="text-xs uppercase tracking-[0.28em] text-sand-700">Game time</p>
               <div className="mt-2 font-display text-6xl tabular-nums text-ink">{formatDuration(elapsedMs)}</div>
+              <p className="mt-2 text-sm text-sand-800">
+                {session ? (isRunning ? "Game in progress" : "Game paused") : "Ready when you are"}
+              </p>
             </div>
             <button
               type="button"
+              aria-label="Enable sound"
               onClick={() => void unlockAudio()}
-              className="rounded-full border border-sand-300 bg-white/80 px-3 py-2 text-xs font-semibold text-sand-700"
+              className="inline-flex items-center gap-2 rounded-full border border-sand-300 bg-white/80 px-3 py-2 text-xs font-semibold text-sand-700"
             >
-              Unlock audio
+              <Volume2 className="h-4 w-4" />
+              Enable sound
             </button>
           </div>
 
           <div className="mt-6 rounded-[1.5rem] bg-ink px-4 py-4 text-sand-50">
             <div className="flex items-center justify-between">
-              <p className="text-xs uppercase tracking-[0.22em] text-sand-200">Turn Cycle</p>
-              <span className="text-xs text-sand-200">{settings.turnTimerEnabled ? `${settings.turnDurationSec}s turns` : "disabled"}</span>
+              <p className="text-xs uppercase tracking-[0.22em] text-sand-200">Turn reminder</p>
+              <span className="text-xs text-sand-200">
+                {settings.turnTimerEnabled ? `Every ${settings.turnDurationSec} seconds` : "Off"}
+              </span>
             </div>
             <div className="mt-3 flex items-end justify-between gap-4">
               <div>
@@ -94,8 +236,8 @@ export function GameScreen() {
                 </div>
                 <p className="mt-1 text-xs text-sand-200">
                   {turnState.enabled
-                    ? `${turnState.completedCycles} completed turn ${turnState.completedCycles === 1 ? "cycle" : "cycles"}`
-                    : "Turn timer is off"}
+                    ? `${turnState.completedCycles} ${turnState.completedCycles === 1 ? "turn finished" : "turns finished"}`
+                    : "Turn reminders are turned off"}
                 </p>
               </div>
               <div className="h-20 w-3 rounded-full bg-sand-900/60">
@@ -144,147 +286,6 @@ export function GameScreen() {
             )}
           </div>
         </Card>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="lg">
-                <Settings2 className="mr-2 h-4 w-4" />
-                Settings
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="max-h-[88vh] overflow-y-auto">
-              <SheetTitle className="font-display text-3xl text-ink">Settings</SheetTitle>
-              <SheetDescription className="mt-2 text-sm text-sand-800">
-                Preferences save locally. In-progress sessions restore after refresh or app reopen.
-              </SheetDescription>
-
-              <div className="mt-6 space-y-5">
-                <SettingRow
-                  label="Background music"
-                  description="Audio begins only after user interaction and browser permission."
-                  control={
-                    <Switch
-                      checked={settings.musicEnabled}
-                      onCheckedChange={(checked) =>
-                        setSettings((current) => ({
-                          ...current,
-                          musicEnabled: checked
-                        }))
-                      }
-                    />
-                  }
-                />
-
-                <LabeledSelect
-                  label="Music preset"
-                  value={settings.musicPresetId}
-                  onValueChange={(value) =>
-                    setSettings((current) => ({
-                      ...current,
-                      musicPresetId: value
-                    }))
-                  }
-                  options={MUSIC_PRESETS.map((preset) => ({ value: preset.id, label: preset.label }))}
-                />
-
-                <SettingRow
-                  label="Turn timer"
-                  description="Repeats continuously during active play and pauses with the game."
-                  control={
-                    <Switch
-                      checked={settings.turnTimerEnabled}
-                      onCheckedChange={(checked) =>
-                        setSettings((current) => ({
-                          ...current,
-                          turnTimerEnabled: checked
-                        }))
-                      }
-                    />
-                  }
-                />
-
-                <LabeledSelect
-                  label="Turn duration"
-                  value={String(settings.turnDurationSec)}
-                  onValueChange={(value) =>
-                    setSettings((current) => ({
-                      ...current,
-                      turnDurationSec: Number(value)
-                    }))
-                  }
-                  options={[
-                    { value: "60", label: "60 seconds" },
-                    { value: "75", label: "75 seconds" },
-                    { value: "90", label: "90 seconds" },
-                    { value: "120", label: "120 seconds" }
-                  ]}
-                />
-
-                <LabeledSelect
-                  label="Alert sound"
-                  value={settings.turnSoundId}
-                  onValueChange={(value) =>
-                    setSettings((current) => ({
-                      ...current,
-                      turnSoundId: value
-                    }))
-                  }
-                  options={ALERT_SOUNDS.map((sound) => ({ value: sound.id, label: sound.label }))}
-                />
-              </div>
-            </SheetContent>
-          </Sheet>
-
-          <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="lg">
-                <History className="mr-2 h-4 w-4" />
-                History
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="max-h-[88vh] overflow-y-auto">
-              <SheetTitle className="font-display text-3xl text-ink">Recent Games</SheetTitle>
-              <SheetDescription className="mt-2 text-sm text-sand-800">
-                Local-only history, limited to the 30 most recently finished games.
-              </SheetDescription>
-
-              <div className="mt-5 space-y-3">
-                {history.length === 0 && (
-                  <div className="rounded-[1.5rem] border border-dashed border-sand-300 bg-white/70 px-4 py-5 text-sm text-sand-800">
-                    No finished games yet.
-                  </div>
-                )}
-                {history.map((record) => (
-                  <div key={record.id} className="rounded-[1.5rem] border border-sand-200 bg-white/80 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="font-display text-2xl text-ink">{formatDuration(record.durationMs)}</div>
-                        <p className="mt-1 text-sm text-sand-800">
-                          {record.winner ? `Winner: ${record.winner}` : "Winner not recorded"}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        aria-label={`Delete history ${record.id}`}
-                        className="rounded-full bg-sand-100 px-3 py-2 text-xs font-semibold text-sand-800"
-                        onClick={() => void deleteHistoryRecord(record.id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                    <p className="mt-3 text-xs text-sand-700">Started {formatDateTime(record.startedAt)}</p>
-                    <p className="mt-1 text-xs text-sand-700">Finished {formatDateTime(record.finishedAt)}</p>
-                    <p className="mt-2 text-xs text-sand-700">
-                      {record.turnTimerEnabled ? `${record.turnDurationSec}s turns` : "Turn timer off"} ·{" "}
-                      {record.musicEnabled ? `Music ${record.musicPresetId}` : "Music off"} · Alert {record.turnSoundId}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
       </div>
 
       <Dialog
@@ -297,9 +298,9 @@ export function GameScreen() {
         }}
       >
         <DialogContent>
-          <DialogTitle className="font-display text-3xl text-ink">Finish game?</DialogTitle>
+          <DialogTitle className="font-display text-3xl text-ink">End this game?</DialogTitle>
           <DialogDescription className="mt-2 text-sm text-sand-800">
-            Save the finished session and optionally attach a winner. This stops timers, stops audio, and clears the active session.
+            Save this game to your history. You can add the winner if you want.
           </DialogDescription>
           <div className="mt-5">
             <label className="mb-2 block text-sm font-semibold text-sand-800" htmlFor="winner">
@@ -307,14 +308,14 @@ export function GameScreen() {
             </label>
             <Input
               id="winner"
-              placeholder="Optional name"
+              placeholder="Optional"
               value={winnerDraft}
               onChange={(event) => setWinnerDraft(event.target.value)}
             />
           </div>
           <div className="mt-6 grid grid-cols-2 gap-3">
             <Button variant="secondary" onClick={() => setFinishOpen(false)}>
-              Keep playing
+              Go back
             </Button>
             <Button
               variant="danger"
@@ -324,7 +325,7 @@ export function GameScreen() {
               }}
             >
               <TimerReset className="mr-2 h-4 w-4" />
-              Save game
+              Save to history
             </Button>
           </div>
         </DialogContent>
