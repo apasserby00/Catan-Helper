@@ -1,10 +1,4 @@
-import type { AlertSound, MusicPreset } from "@/types";
-
-export const MUSIC_PRESETS: MusicPreset[] = [
-  { id: "harbor", label: "Harbor", frequencies: [196, 246.94, 329.63] },
-  { id: "fields", label: "Fields", frequencies: [174.61, 220, 293.66] },
-  { id: "forge", label: "Forge", frequencies: [220, 277.18, 369.99] }
-];
+import type { AlertSound } from "@/types";
 
 export const ALERT_SOUNDS: AlertSound[] = [
   { id: "bell", label: "Bell", frequencies: [880, 1174.66] },

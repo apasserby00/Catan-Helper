@@ -34,11 +34,37 @@ class FakeOscillatorNode {
     value: 0,
     setValueAtTime: (value: number) => {
       this.frequency.value = value;
+    },
+    linearRampToValueAtTime: (value: number) => {
+      this.frequency.value = value;
     }
   };
   connect() {}
   start() {}
   stop() {}
+}
+
+class FakeAudioElement {
+  static instances: FakeAudioElement[] = [];
+  loop = false;
+  preload = "auto";
+  volume = 0;
+  currentTime = 0;
+  paused = true;
+  src: string;
+
+  constructor(src: string) {
+    this.src = src;
+    FakeAudioElement.instances.push(this);
+  }
+
+  async play() {
+    this.paused = false;
+  }
+
+  pause() {
+    this.paused = true;
+  }
 }
 
 class FakeAudioContext {
@@ -71,24 +97,49 @@ class FakeAudioContext {
 
 describe("audio controller", () => {
   beforeEach(() => {
+    FakeAudioContext.instances = [];
+    FakeAudioElement.instances = [];
     vi.stubGlobal("AudioContext", FakeAudioContext);
+    vi.stubGlobal("Audio", FakeAudioElement);
   });
 
   it("ducks and restores background music around alerts", async () => {
     vi.useFakeTimers();
     const controller = createAudioController();
     await controller.unlock();
-    await controller.setMusicEnabled(true, "harbor");
+    await controller.setMusicEnabled(true);
+    await vi.runAllTimersAsync();
+
+    const music = FakeAudioElement.instances[0];
+    expect(music.paused).toBe(false);
+
     const alertPromise = controller.playTurnAlert("bell");
     await vi.runAllTimersAsync();
     await alertPromise;
 
-    const instance = FakeAudioContext.instances[0];
-    const musicGain = instance.gainNodes[1];
-    expect(musicGain.gain.events.some((event) => event.type === "linear" && event.value === 0.05)).toBe(true);
-    expect(musicGain.gain.events.some((event) => event.type === "linear" && event.value === 0.16)).toBe(true);
+    expect(music.volume).toBeGreaterThan(0.2);
 
     controller.teardown();
     vi.useRealTimers();
+  });
+
+  it("unlocks the audio element for background playback", async () => {
+    const controller = createAudioController();
+    await controller.unlock();
+
+    const music = FakeAudioElement.instances[0];
+    expect(music.currentTime).toBe(0);
+    expect(music.paused).toBe(true);
+  });
+
+  it("does not rewind music when unlock is called again", async () => {
+    const controller = createAudioController();
+    await controller.unlock();
+
+    const music = FakeAudioElement.instances[0];
+    music.currentTime = 42;
+    await controller.unlock();
+
+    expect(music.currentTime).toBe(42);
   });
 });

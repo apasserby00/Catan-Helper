@@ -1,8 +1,9 @@
 export type SessionStatus = "idle" | "running" | "paused";
+export type AppLanguage = "en" | "tr";
 
 export interface AppSettings {
+  language: AppLanguage;
   musicEnabled: boolean;
-  musicPresetId: string;
   turnTimerEnabled: boolean;
   turnDurationSec: number;
   turnSoundId: string;
@@ -18,9 +19,9 @@ export interface ActiveGameSession {
   turnTimerEnabled: boolean;
   turnDurationSec: number;
   turnElapsedMsBeforeCurrentRun: number;
+  turnLastResumedAt: number | null;
   lastTurnAlertCycle: number;
   musicEnabled: boolean;
-  musicPresetId: string;
   turnSoundId: string;
 }
 
@@ -31,10 +32,8 @@ export interface GameHistoryRecord {
   durationMs: number;
   winner?: string;
   turnTimerEnabled: boolean;
-  turnDurationSec: number;
-  musicEnabled: boolean;
-  musicPresetId: string;
-  turnSoundId: string;
+  turnDurationSec: number | null;
+  completedTurns: number;
 }
 
 export interface TurnReconciliation {
@@ -44,12 +43,6 @@ export interface TurnReconciliation {
   currentCycleElapsedMs: number;
   msUntilNextAlert: number | null;
   completedCycles: number;
-}
-
-export interface MusicPreset {
-  id: string;
-  label: string;
-  frequencies: number[];
 }
 
 export interface AlertSound {

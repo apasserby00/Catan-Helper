@@ -3,8 +3,8 @@ import type { AppSettings } from "@/types";
 const SETTINGS_KEY = "catan-clock:settings";
 
 export const DEFAULT_SETTINGS: AppSettings = {
+  language: "en",
   musicEnabled: false,
-  musicPresetId: "harbor",
   turnTimerEnabled: true,
   turnDurationSec: 90,
   turnSoundId: "bell"
@@ -23,8 +23,8 @@ export function loadSettings(): AppSettings {
   try {
     const parsed = JSON.parse(raw) as Partial<AppSettings>;
     return {
+      language: parsed.language ?? DEFAULT_SETTINGS.language,
       musicEnabled: parsed.musicEnabled ?? DEFAULT_SETTINGS.musicEnabled,
-      musicPresetId: parsed.musicPresetId ?? DEFAULT_SETTINGS.musicPresetId,
       turnTimerEnabled: parsed.turnTimerEnabled ?? DEFAULT_SETTINGS.turnTimerEnabled,
       turnDurationSec: parsed.turnDurationSec ?? DEFAULT_SETTINGS.turnDurationSec,
       turnSoundId: parsed.turnSoundId ?? DEFAULT_SETTINGS.turnSoundId

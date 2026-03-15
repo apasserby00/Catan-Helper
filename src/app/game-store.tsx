@@ -7,7 +7,7 @@ import {
   useState,
   type PropsWithChildren
 } from "react";
-import { createAudioController } from "@/lib/audio-controller";
+import { createAudioController, type AudioController } from "@/lib/audio-controller";
 import { addHistory, clearActiveSession, deleteHistory, getActiveSession, listHistory, saveActiveSession } from "@/lib/db";
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from "@/lib/settings-storage";
 import {
@@ -18,6 +18,7 @@ import {
   getTurnReconciliation,
   pauseSession,
   resumeSession,
+  skipToNextTurn,
   updateSessionForSettings
 } from "@/lib/timer";
 import type { ActiveGameSession, AppSettings, GameHistoryRecord } from "@/types";
@@ -32,12 +33,12 @@ interface GameContextValue {
   startGame: () => Promise<void>;
   pauseGame: () => Promise<void>;
   resumeGame: () => Promise<void>;
+  nextTurn: () => Promise<void>;
   finishGame: (winner: string) => Promise<void>;
   deleteHistoryRecord: (id: string) => Promise<void>;
   clearWinnerDraft: () => void;
   winnerDraft: string;
   setWinnerDraft: (value: string) => void;
-  unlockAudio: () => Promise<void>;
 }
 
 const GameContext = createContext<GameContextValue | null>(null);
@@ -49,7 +50,15 @@ export function GameProvider({ children }: PropsWithChildren) {
   const [hydrated, setHydrated] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [winnerDraft, setWinnerDraft] = useState("");
-  const audioRef = useRef(createAudioController());
+  const audioRef = useRef<AudioController | null>(null);
+
+  function getAudioController() {
+    if (!audioRef.current) {
+      audioRef.current = createAudioController();
+    }
+
+    return audioRef.current;
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -69,19 +78,20 @@ export function GameProvider({ children }: PropsWithChildren) {
 
     return () => {
       cancelled = true;
-      audioRef.current.teardown();
+      audioRef.current?.teardown();
     };
   }, []);
 
   useEffect(() => {
+    const intervalMs = session?.status === "running" ? 250 : 1000;
     const interval = window.setInterval(() => {
       setNow(Date.now());
-    }, 250);
+    }, intervalMs);
 
     return () => {
       window.clearInterval(interval);
     };
-  }, []);
+  }, [session?.status]);
 
   useEffect(() => {
     if (!hydrated) {
@@ -99,18 +109,23 @@ export function GameProvider({ children }: PropsWithChildren) {
   }, [settings]);
 
   useEffect(() => {
+    const audio = audioRef.current;
     if (!session) {
-      audioRef.current.stopBackgroundMusic();
+      audio?.stopBackgroundMusic();
       return;
     }
 
     if (session.status === "paused") {
-      audioRef.current.pauseBackgroundMusic();
+      audio?.pauseBackgroundMusic();
       return;
     }
 
-    void audioRef.current.setMusicEnabled(session.musicEnabled, session.musicPresetId);
-  }, [session]);
+    if (!audio) {
+      return;
+    }
+
+    void audio.setMusicEnabled(session.musicEnabled);
+  }, [session?.id, session?.status, session?.musicEnabled]);
 
   useEffect(() => {
     if (!session || session.status !== "running") {
@@ -122,7 +137,12 @@ export function GameProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    void audioRef.current.playTurnAlert(session.turnSoundId);
+    const audio = audioRef.current;
+    if (!audio) {
+      return;
+    }
+
+    void audio.playTurnAlert(session.turnSoundId);
     const updated = acknowledgeTurnAlert(session, reconciliation.completedCycles);
     setSession(updated);
     void saveActiveSession(updated);
@@ -141,10 +161,34 @@ export function GameProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
+  useEffect(() => {
+    let unlocked = false;
+
+    function handleFirstInteraction() {
+      if (unlocked) {
+        return;
+      }
+
+      unlocked = true;
+      void getAudioController().unlock();
+      window.removeEventListener("pointerdown", handleFirstInteraction, true);
+      window.removeEventListener("keydown", handleFirstInteraction, true);
+    }
+
+    window.addEventListener("pointerdown", handleFirstInteraction, true);
+    window.addEventListener("keydown", handleFirstInteraction, true);
+
+    return () => {
+      window.removeEventListener("pointerdown", handleFirstInteraction, true);
+      window.removeEventListener("keydown", handleFirstInteraction, true);
+    };
+  }, []);
+
   async function unlockAudio() {
-    await audioRef.current.unlock();
+    const audio = getAudioController();
+    await audio.unlock();
     if (session?.status === "running" && session.musicEnabled) {
-      await audioRef.current.setMusicEnabled(true, session.musicPresetId);
+      await audio.setMusicEnabled(true);
     }
   }
 
@@ -153,13 +197,18 @@ export function GameProvider({ children }: PropsWithChildren) {
   }
 
   async function startGame() {
-    await unlockAudio();
-    const nextSession = createSession(settings, Date.now());
-    setSession(nextSession);
-    await saveActiveSession(nextSession);
+    const startedAt = Date.now();
+    const nextSession = createSession(settings, startedAt);
+    const audio = getAudioController();
+
+    await audio.unlock();
     if (nextSession.musicEnabled) {
-      await audioRef.current.setMusicEnabled(true, nextSession.musicPresetId);
+      await audio.setMusicEnabled(true);
     }
+
+    setSession(nextSession);
+    setNow(startedAt);
+    await saveActiveSession(nextSession);
   }
 
   async function pauseGame() {
@@ -170,7 +219,7 @@ export function GameProvider({ children }: PropsWithChildren) {
     const nextSession = pauseSession(session, Date.now());
     setSession(nextSession);
     await saveActiveSession(nextSession);
-    audioRef.current.pauseBackgroundMusic();
+    audioRef.current?.pauseBackgroundMusic();
   }
 
   async function resumeGame() {
@@ -183,8 +232,18 @@ export function GameProvider({ children }: PropsWithChildren) {
     setSession(nextSession);
     await saveActiveSession(nextSession);
     if (nextSession.musicEnabled) {
-      await audioRef.current.resumeBackgroundMusic();
+      await getAudioController().resumeBackgroundMusic();
     }
+  }
+
+  async function nextTurn() {
+    if (!session) {
+      return;
+    }
+
+    const nextSession = skipToNextTurn(session, Date.now());
+    setSession(nextSession);
+    await saveActiveSession(nextSession);
   }
 
   async function finishGameWithWinner(winner: string) {
@@ -193,7 +252,7 @@ export function GameProvider({ children }: PropsWithChildren) {
     }
 
     const record = finishSession(session, winner, Date.now());
-    audioRef.current.stopBackgroundMusic();
+    audioRef.current?.stopBackgroundMusic();
     await addHistory(record);
     await clearActiveSession();
     setHistory(await listHistory());
@@ -217,12 +276,12 @@ export function GameProvider({ children }: PropsWithChildren) {
       startGame,
       pauseGame,
       resumeGame,
+      nextTurn,
       finishGame: finishGameWithWinner,
       deleteHistoryRecord: removeHistory,
       clearWinnerDraft: () => setWinnerDraft(""),
       winnerDraft,
-      setWinnerDraft,
-      unlockAudio
+      setWinnerDraft
     }),
     [settings, session, history, now, hydrated, winnerDraft]
   );

@@ -1,13 +1,17 @@
-import { ALERT_SOUNDS, MUSIC_PRESETS } from "@/config/audio-presets";
+import { ALERT_SOUNDS } from "@/config/audio-presets";
+
+const BACKGROUND_MUSIC_SRC = `${import.meta.env.BASE_URL}audio/catan-clock-loop.mp3`;
+const MUSIC_VOLUME = 0.22;
+const DUCKED_VOLUME = 0.08;
 
 export interface AudioController {
   unlock(): Promise<void>;
-  startBackgroundMusic(presetId: string): Promise<void>;
+  startBackgroundMusic(): Promise<void>;
   stopBackgroundMusic(): void;
   pauseBackgroundMusic(): void;
   resumeBackgroundMusic(): Promise<void>;
   playTurnAlert(soundId: string): Promise<void>;
-  setMusicEnabled(enabled: boolean, presetId: string): Promise<void>;
+  setMusicEnabled(enabled: boolean): Promise<void>;
   teardown(): void;
 }
 
@@ -18,7 +22,9 @@ function wait(ms: number) {
 }
 
 export function createAudioController(): AudioController {
-  const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  const AudioContextCtor =
+    window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+
   if (!AudioContextCtor) {
     return {
       async unlock() {},
@@ -34,38 +40,62 @@ export function createAudioController(): AudioController {
 
   const context = new AudioContextCtor();
   const masterGain = context.createGain();
-  const musicGain = context.createGain();
   const alertGain = context.createGain();
-  masterGain.gain.value = 0.9;
-  musicGain.gain.value = 0;
-  alertGain.gain.value = 0.9;
-  musicGain.connect(masterGain);
+  const musicElement = new Audio(BACKGROUND_MUSIC_SRC);
+  musicElement.loop = true;
+  musicElement.preload = "auto";
+  musicElement.volume = 0;
+
+  masterGain.gain.value = 1;
+  alertGain.gain.value = 1;
   alertGain.connect(masterGain);
   masterGain.connect(context.destination);
 
   let unlocked = false;
-  let musicStarted = false;
-  let musicOscillators: OscillatorNode[] = [];
   let musicEnabled = false;
-  let currentPresetId = "harbor";
+  let musicStarted = false;
+  let volumeTimers: number[] = [];
+
+  function clearVolumeTimers() {
+    volumeTimers.forEach((timer) => window.clearTimeout(timer));
+    volumeTimers = [];
+  }
+
+  function rampMusicVolume(target: number, durationMs: number) {
+    clearVolumeTimers();
+    const start = musicElement.volume;
+    const steps = 6;
+
+    for (let step = 1; step <= steps; step += 1) {
+      const timer = window.setTimeout(() => {
+        const progress = step / steps;
+        musicElement.volume = start + (target - start) * progress;
+      }, (durationMs / steps) * step);
+      volumeTimers.push(timer);
+    }
+  }
 
   async function unlock() {
     if (context.state === "suspended") {
       await context.resume();
     }
+
+    if (unlocked) {
+      return;
+    }
+
     unlocked = true;
+
+    try {
+      await musicElement.play();
+      musicElement.pause();
+      musicElement.currentTime = 0;
+    } catch {
+      // Browsers may still require another gesture; ignore and retry on later calls.
+    }
   }
 
-  function clearMusic() {
-    musicOscillators.forEach((oscillator) => oscillator.stop());
-    musicOscillators = [];
-    musicStarted = false;
-    musicGain.gain.cancelScheduledValues(context.currentTime);
-    musicGain.gain.setValueAtTime(0, context.currentTime);
-  }
-
-  async function startBackgroundMusic(presetId: string) {
-    currentPresetId = presetId;
+  async function startBackgroundMusic() {
     if (!musicEnabled || !unlocked) {
       return;
     }
@@ -74,45 +104,61 @@ export function createAudioController(): AudioController {
       await context.resume();
     }
 
-    const preset = MUSIC_PRESETS.find((entry) => entry.id === presetId) ?? MUSIC_PRESETS[0];
-    clearMusic();
-    musicOscillators = preset.frequencies.map((frequency, index) => {
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      oscillator.type = index % 2 === 0 ? "triangle" : "sine";
-      oscillator.frequency.value = frequency;
-      gain.gain.value = index === 0 ? 0.05 : 0.03;
-      oscillator.connect(gain);
-      gain.connect(musicGain);
-      oscillator.start();
-      return oscillator;
-    });
-    musicStarted = true;
-    musicGain.gain.cancelScheduledValues(context.currentTime);
-    musicGain.gain.linearRampToValueAtTime(0.16, context.currentTime + 0.45);
+    clearVolumeTimers();
+    musicElement.pause();
+    musicElement.currentTime = 0;
+    musicElement.volume = 0;
+
+    try {
+      await musicElement.play();
+      musicStarted = true;
+      rampMusicVolume(MUSIC_VOLUME, 420);
+    } catch {
+      musicStarted = false;
+    }
   }
 
   function stopBackgroundMusic() {
-    clearMusic();
+    clearVolumeTimers();
+    musicElement.pause();
+    musicElement.currentTime = 0;
+    musicElement.volume = 0;
+    musicStarted = false;
   }
 
   function pauseBackgroundMusic() {
-    musicGain.gain.cancelScheduledValues(context.currentTime);
-    musicGain.gain.linearRampToValueAtTime(0, context.currentTime + 0.15);
-  }
-
-  async function resumeBackgroundMusic() {
     if (!musicStarted) {
-      await startBackgroundMusic(currentPresetId);
       return;
     }
 
-    if (context.state === "suspended") {
-      await context.resume();
+    rampMusicVolume(0, 180);
+    const timer = window.setTimeout(() => {
+      musicElement.pause();
+    }, 180);
+    volumeTimers.push(timer);
+  }
+
+  async function resumeBackgroundMusic() {
+    if (!musicEnabled || !unlocked) {
+      return;
     }
 
-    musicGain.gain.cancelScheduledValues(context.currentTime);
-    musicGain.gain.linearRampToValueAtTime(0.16, context.currentTime + 0.3);
+    if (!musicStarted) {
+      try {
+        await musicElement.play();
+        musicStarted = true;
+      } catch {
+        return;
+      }
+    } else {
+      try {
+        await musicElement.play();
+      } catch {
+        return;
+      }
+    }
+
+    rampMusicVolume(MUSIC_VOLUME, 280);
   }
 
   async function playTurnAlert(soundId: string) {
@@ -126,11 +172,10 @@ export function createAudioController(): AudioController {
 
     const sound = ALERT_SOUNDS.find((entry) => entry.id === soundId) ?? ALERT_SOUNDS[0];
     const now = context.currentTime;
-    const restoreTarget = musicEnabled && musicStarted ? 0.16 : 0;
 
-    musicGain.gain.cancelScheduledValues(now);
-    musicGain.gain.setValueAtTime(musicGain.gain.value, now);
-    musicGain.gain.linearRampToValueAtTime(0.05, now + 0.08);
+    if (musicEnabled && musicStarted) {
+      rampMusicVolume(DUCKED_VOLUME, 90);
+    }
 
     sound.frequencies.forEach((frequency, index) => {
       const oscillator = context.createOscillator();
@@ -138,32 +183,40 @@ export function createAudioController(): AudioController {
       oscillator.type = index === 0 ? "square" : "sine";
       oscillator.frequency.setValueAtTime(frequency, now);
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.16, now + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35 + index * 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.22, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32 + index * 0.08);
       oscillator.connect(gain);
       gain.connect(alertGain);
       oscillator.start(now);
-      oscillator.stop(now + 0.5 + index * 0.1);
+      oscillator.stop(now + 0.45 + index * 0.08);
     });
 
-    await wait(500);
-    musicGain.gain.cancelScheduledValues(context.currentTime);
-    musicGain.gain.linearRampToValueAtTime(restoreTarget, context.currentTime + 0.3);
+    await wait(420);
+
+    if (musicEnabled && musicStarted) {
+      rampMusicVolume(MUSIC_VOLUME, 260);
+    }
   }
 
-  async function setMusicEnabled(enabled: boolean, presetId: string) {
+  async function setMusicEnabled(enabled: boolean) {
     musicEnabled = enabled;
-    currentPresetId = presetId;
     if (!enabled) {
       stopBackgroundMusic();
       return;
     }
 
-    await startBackgroundMusic(presetId);
+    if (musicStarted) {
+      rampMusicVolume(MUSIC_VOLUME, 220);
+      return;
+    }
+
+    await startBackgroundMusic();
   }
 
   function teardown() {
-    clearMusic();
+    clearVolumeTimers();
+    musicElement.pause();
+    musicElement.src = "";
     void context.close();
   }
 

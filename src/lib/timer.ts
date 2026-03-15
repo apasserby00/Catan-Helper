@@ -15,9 +15,9 @@ export function createSession(settings: AppSettings, now = Date.now()): ActiveGa
     turnTimerEnabled: settings.turnTimerEnabled,
     turnDurationSec: settings.turnDurationSec,
     turnElapsedMsBeforeCurrentRun: 0,
+    turnLastResumedAt: settings.turnTimerEnabled ? now : null,
     lastTurnAlertCycle: 0,
     musicEnabled: settings.musicEnabled,
-    musicPresetId: settings.musicPresetId,
     turnSoundId: settings.turnSoundId
   };
 }
@@ -35,11 +35,11 @@ export function getTurnElapsedMs(session: ActiveGameSession, now = Date.now()) {
     return 0;
   }
 
-  if (session.status !== "running" || session.lastResumedAt === null) {
+  if (session.status !== "running" || session.turnLastResumedAt === null) {
     return session.turnElapsedMsBeforeCurrentRun;
   }
 
-  return session.turnElapsedMsBeforeCurrentRun + Math.max(0, now - session.lastResumedAt);
+  return session.turnElapsedMsBeforeCurrentRun + Math.max(0, now - session.turnLastResumedAt);
 }
 
 export function pauseSession(session: ActiveGameSession, now = Date.now()): ActiveGameSession {
@@ -48,12 +48,14 @@ export function pauseSession(session: ActiveGameSession, now = Date.now()): Acti
   }
 
   const elapsedSinceResume = Math.max(0, now - session.lastResumedAt);
+  const turnElapsedSinceResume = session.turnLastResumedAt === null ? 0 : Math.max(0, now - session.turnLastResumedAt);
   return {
     ...session,
     status: "paused",
     elapsedMsBeforeCurrentRun: session.elapsedMsBeforeCurrentRun + elapsedSinceResume,
-    turnElapsedMsBeforeCurrentRun: session.turnElapsedMsBeforeCurrentRun + elapsedSinceResume,
+    turnElapsedMsBeforeCurrentRun: session.turnElapsedMsBeforeCurrentRun + turnElapsedSinceResume,
     lastResumedAt: null,
+    turnLastResumedAt: null,
     pausedAt: now
   };
 }
@@ -67,6 +69,7 @@ export function resumeSession(session: ActiveGameSession, now = Date.now()): Act
     ...session,
     status: "running",
     lastResumedAt: now,
+    turnLastResumedAt: session.turnTimerEnabled ? now : null,
     pausedAt: null
   };
 }
@@ -82,21 +85,39 @@ export function updateSessionForSettings(
     turnTimerEnabled: settings.turnTimerEnabled,
     turnDurationSec: settings.turnDurationSec,
     musicEnabled: settings.musicEnabled,
-    musicPresetId: settings.musicPresetId,
     turnSoundId: settings.turnSoundId
   };
 
   if (!settings.turnTimerEnabled) {
     updated.turnElapsedMsBeforeCurrentRun = 0;
+    updated.turnLastResumedAt = null;
     updated.lastTurnAlertCycle = 0;
   }
 
   if (settings.turnTimerEnabled && !session.turnTimerEnabled) {
     updated.turnElapsedMsBeforeCurrentRun = 0;
+    updated.turnLastResumedAt = session.status === "running" ? now : null;
     updated.lastTurnAlertCycle = 0;
   }
 
   return session.status === "running" ? resumeSession(updated, now) : updated;
+}
+
+export function skipToNextTurn(session: ActiveGameSession, now = Date.now()) {
+  if (!session.turnTimerEnabled) {
+    return session;
+  }
+
+  const durationMs = session.turnDurationSec * 1000;
+  const totalTurnElapsedMs = getTurnElapsedMs(session, now);
+  const nextCycle = Math.floor(totalTurnElapsedMs / durationMs) + 1;
+
+  return {
+    ...session,
+    turnElapsedMsBeforeCurrentRun: nextCycle * durationMs,
+    turnLastResumedAt: session.status === "running" ? now : null,
+    lastTurnAlertCycle: nextCycle
+  };
 }
 
 export function getTurnReconciliation(
@@ -145,6 +166,8 @@ export function finishSession(
   winner: string,
   now = Date.now()
 ): GameHistoryRecord {
+  const turnSummary = getTurnReconciliation(session, now);
+
   return {
     id: createId("history"),
     startedAt: session.startedAt,
@@ -152,10 +175,8 @@ export function finishSession(
     durationMs: getElapsedMs(session, now),
     winner: winner.trim() || undefined,
     turnTimerEnabled: session.turnTimerEnabled,
-    turnDurationSec: session.turnDurationSec,
-    musicEnabled: session.musicEnabled,
-    musicPresetId: session.musicPresetId,
-    turnSoundId: session.turnSoundId
+    turnDurationSec: session.turnTimerEnabled ? session.turnDurationSec : null,
+    completedTurns: turnSummary.enabled ? turnSummary.completedCycles : 0
   };
 }
 
@@ -166,4 +187,22 @@ export function formatDuration(ms: number) {
   const seconds = totalSeconds % 60;
 
   return [hours, minutes, seconds].map((value) => value.toString().padStart(2, "0")).join(":");
+}
+
+export function formatFriendlyDuration(ms: number) {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const parts: string[] = [];
+
+  if (hours > 0) {
+    parts.push(`${hours}h`);
+  }
+  if (minutes > 0 || hours > 0) {
+    parts.push(`${minutes}m`);
+  }
+  parts.push(`${seconds}s`);
+
+  return parts.join(" ");
 }

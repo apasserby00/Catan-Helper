@@ -10,10 +10,10 @@ export const SheetClose = DialogPrimitive.Close;
 export function SheetContent({ className, children }: { className?: string; children: ReactNode }) {
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm" />
+      <DialogPrimitive.Overlay className="sheet-overlay fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm" />
       <DialogPrimitive.Content
         className={cn(
-          "fixed inset-x-0 bottom-0 z-50 rounded-t-[2rem] border border-white/70 bg-[#fdf8ef] px-5 pb-8 pt-4 shadow-float focus:outline-none",
+          "sheet-content fixed inset-x-0 bottom-0 z-50 rounded-t-[2rem] border border-white/70 bg-[#fdf8ef] px-5 pb-8 pt-4 shadow-float focus:outline-none",
           className
         )}
       >
