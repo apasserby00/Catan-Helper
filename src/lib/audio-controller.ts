@@ -1,6 +1,6 @@
 const BACKGROUND_MUSIC_SRC = `${import.meta.env.BASE_URL}audio/catan-clock-loop.mp3`;
 const TURN_ALERT_SRC = `${import.meta.env.BASE_URL}audio/turn-alert.wav`;
-const MUSIC_VOLUME = 0.8;
+const MUSIC_VOLUME = 0.03;
 const DUCKED_VOLUME = 0.08;
 
 export interface AudioController {

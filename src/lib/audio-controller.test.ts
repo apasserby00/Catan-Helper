@@ -126,7 +126,7 @@ describe("audio controller", () => {
     await alertPromise;
 
     const musicGain = FakeAudioContext.instances[0]?.gainNodes[1];
-    expect(musicGain?.gain.value).toBe(0.12);
+    expect(musicGain?.gain.value).toBe(0.03);
 
     controller.teardown();
     vi.useRealTimers();
