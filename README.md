@@ -1,51 +1,69 @@
 # Catan Clock
 
-Catan Clock is a simple companion app for tracking your game time and keeping turns moving.
+Catan Clock is a lightweight companion timer for games of Catan. It helps keep turns moving and lets the table focus on the game instead of tracking time.
 
-It is designed to stay out of the way while you play:
+**Live app:**  
+https://apasserby00.github.io/Catan-Clock/
 
-- Start a game with one tap
-- Keep a running game timer visible at all times
-- Use turn alerts to remind players when it is time to pass the turn
-- Pause and resume whenever the table takes a break
+---
+
+## Features
+
+- One-tap start for a new game
+- A visible game timer that runs for the entire session
+- Optional turn timer with alerts when a turn runs long
+- Pause and resume when the table takes a break
 - Save finished games and optionally record the winner
-- Keep your recent game history on the same device
+- Local game history stored on the device
+- Optional background music
 
-## What It Does
+---
 
-This app gives you one clean screen for the whole session.
+## How It Works
 
-- The main timer shows how long the game has been running
-- The turn timer can remind players when their turn has gone on too long
-- Background music can play quietly during the game
-- Finished games are saved so you can look back later
+The app stays on a single screen during play.
 
-## How To Use It
+The **main timer** tracks the total length of the game.  
+The **turn timer** can alert players when their turn exceeds the configured limit.  
 
-1. Open the app.
-2. Tap `Start game`.
-3. Use `Pause` if the game stops for a break.
-4. Use `Next turn` if a player finishes early and you want to trigger the turn alert immediately.
-5. When the game is over, pause the game and tap `Finish`.
-6. Add the winner if you want, then save it to history.
+When the game ends, you can record the winner and save the result to your local game history.
+
+All data stays in the browser on the device you are using.
+
+---
+
+## Install as an App
+
+Catan Clock is a **Progressive Web App (PWA)** and can be installed on phones, tablets, or desktops so it behaves like a regular app.
+
+On most browsers you can choose:
+
+**Install App** or **Add to Home Screen**
+
+---
 
 ## Settings
 
-You can adjust:
+You can configure:
 
 - Language
-- Background music on or off
+- Background music
 - Turn timer on or off
 - Time allowed per turn
 
+---
+
 ## Notes
 
-- Your settings and recent game history stay on the device you are using.
-- If you install the app to your phone or desktop, it can behave like a regular app.
-- If you update the app and do not see changes right away, reloading the page usually fixes it.
+Your settings and recent game history stay on the device you are using.
 
-## Technical
+If you update the app and changes do not appear immediately, reloading the page usually fixes it.
 
-- Built as a web app / PWA with React and Vite
-- Stores settings and game history locally in the browser
-- Production site: [https://apasserby00.github.io/Catan-Clock/](https://apasserby00.github.io/Catan-Clock/)
+---
+
+## Tech Stack
+
+- React
+- Vite
+- Progressive Web App (PWA)
+- Local browser storage for settings and game history
