@@ -242,8 +242,12 @@ export function GameProvider({ children }: PropsWithChildren) {
     }
 
     const nextSession = skipToNextTurn(session, Date.now());
+    const audio = getAudioController();
+
     setSession(nextSession);
     await saveActiveSession(nextSession);
+    await audio.unlock();
+    await audio.playTurnAlert(nextSession.turnSoundId);
   }
 
   async function finishGameWithWinner(winner: string) {

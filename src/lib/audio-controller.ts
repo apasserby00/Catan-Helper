@@ -1,7 +1,6 @@
-import { ALERT_SOUNDS } from "@/config/audio-presets";
-
 const BACKGROUND_MUSIC_SRC = `${import.meta.env.BASE_URL}audio/catan-clock-loop.mp3`;
-const MUSIC_VOLUME = 0.22;
+const TURN_ALERT_SRC = `${import.meta.env.BASE_URL}audio/turn-alert.wav`;
+const MUSIC_VOLUME = 0.5;
 const DUCKED_VOLUME = 0.08;
 
 export interface AudioController {
@@ -39,17 +38,12 @@ export function createAudioController(): AudioController {
   }
 
   const context = new AudioContextCtor();
-  const masterGain = context.createGain();
-  const alertGain = context.createGain();
   const musicElement = new Audio(BACKGROUND_MUSIC_SRC);
+  const alertElement = new Audio(TURN_ALERT_SRC);
   musicElement.loop = true;
   musicElement.preload = "auto";
   musicElement.volume = 0;
-
-  masterGain.gain.value = 1;
-  alertGain.gain.value = 1;
-  alertGain.connect(masterGain);
-  masterGain.connect(context.destination);
+  alertElement.preload = "auto";
 
   let unlocked = false;
   let musicEnabled = false;
@@ -90,6 +84,10 @@ export function createAudioController(): AudioController {
       await musicElement.play();
       musicElement.pause();
       musicElement.currentTime = 0;
+
+      await alertElement.play();
+      alertElement.pause();
+      alertElement.currentTime = 0;
     } catch {
       // Browsers may still require another gesture; ignore and retry on later calls.
     }
@@ -161,7 +159,7 @@ export function createAudioController(): AudioController {
     rampMusicVolume(MUSIC_VOLUME, 280);
   }
 
-  async function playTurnAlert(soundId: string) {
+  async function playTurnAlert(_soundId: string) {
     if (!unlocked) {
       return;
     }
@@ -170,26 +168,18 @@ export function createAudioController(): AudioController {
       await context.resume();
     }
 
-    const sound = ALERT_SOUNDS.find((entry) => entry.id === soundId) ?? ALERT_SOUNDS[0];
-    const now = context.currentTime;
-
     if (musicEnabled && musicStarted) {
       rampMusicVolume(DUCKED_VOLUME, 90);
     }
 
-    sound.frequencies.forEach((frequency, index) => {
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      oscillator.type = index === 0 ? "square" : "sine";
-      oscillator.frequency.setValueAtTime(frequency, now);
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.22, now + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32 + index * 0.08);
-      oscillator.connect(gain);
-      gain.connect(alertGain);
-      oscillator.start(now);
-      oscillator.stop(now + 0.45 + index * 0.08);
-    });
+    alertElement.pause();
+    alertElement.currentTime = 0;
+
+    try {
+      await alertElement.play();
+    } catch {
+      return;
+    }
 
     await wait(420);
 
@@ -217,6 +207,8 @@ export function createAudioController(): AudioController {
     clearVolumeTimers();
     musicElement.pause();
     musicElement.src = "";
+    alertElement.pause();
+    alertElement.src = "";
     void context.close();
   }
 
