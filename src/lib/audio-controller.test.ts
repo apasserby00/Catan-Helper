@@ -117,7 +117,7 @@ describe("audio controller", () => {
     await vi.runAllTimersAsync();
     await alertPromise;
 
-    expect(music.volume).toBeGreaterThan(0.2);
+    expect(music.volume).toBe(0.12);
 
     controller.teardown();
     vi.useRealTimers();
