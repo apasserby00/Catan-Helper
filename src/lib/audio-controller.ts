@@ -9,7 +9,7 @@ export interface AudioController {
   stopBackgroundMusic(): void;
   pauseBackgroundMusic(): void;
   resumeBackgroundMusic(): Promise<void>;
-  playTurnAlert(soundId: string): Promise<void>;
+  playTurnAlert(): Promise<void>;
   setMusicEnabled(enabled: boolean): Promise<void>;
   teardown(): void;
 }
@@ -159,7 +159,7 @@ export function createAudioController(): AudioController {
     rampMusicVolume(MUSIC_VOLUME, 280);
   }
 
-  async function playTurnAlert(_soundId: string) {
+  async function playTurnAlert() {
     if (!unlocked) {
       return;
     }

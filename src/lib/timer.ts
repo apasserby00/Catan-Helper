@@ -17,8 +17,7 @@ export function createSession(settings: AppSettings, now = Date.now()): ActiveGa
     turnElapsedMsBeforeCurrentRun: 0,
     turnLastResumedAt: settings.turnTimerEnabled ? now : null,
     lastTurnAlertCycle: 0,
-    musicEnabled: settings.musicEnabled,
-    turnSoundId: settings.turnSoundId
+    musicEnabled: settings.musicEnabled
   };
 }
 
@@ -84,8 +83,7 @@ export function updateSessionForSettings(
     ...nextSession,
     turnTimerEnabled: settings.turnTimerEnabled,
     turnDurationSec: settings.turnDurationSec,
-    musicEnabled: settings.musicEnabled,
-    turnSoundId: settings.turnSoundId
+    musicEnabled: settings.musicEnabled
   };
 
   if (!settings.turnTimerEnabled) {

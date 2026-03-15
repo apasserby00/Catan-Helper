@@ -113,7 +113,7 @@ describe("audio controller", () => {
     const music = FakeAudioElement.instances[0];
     expect(music.paused).toBe(false);
 
-    const alertPromise = controller.playTurnAlert("bell");
+    const alertPromise = controller.playTurnAlert();
     await vi.runAllTimersAsync();
     await alertPromise;
 

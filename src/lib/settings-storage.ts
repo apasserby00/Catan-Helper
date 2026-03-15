@@ -6,8 +6,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   language: "en",
   musicEnabled: false,
   turnTimerEnabled: true,
-  turnDurationSec: 90,
-  turnSoundId: "bell"
+  turnDurationSec: 90
 };
 
 export function loadSettings(): AppSettings {
@@ -26,8 +25,7 @@ export function loadSettings(): AppSettings {
       language: parsed.language ?? DEFAULT_SETTINGS.language,
       musicEnabled: parsed.musicEnabled ?? DEFAULT_SETTINGS.musicEnabled,
       turnTimerEnabled: parsed.turnTimerEnabled ?? DEFAULT_SETTINGS.turnTimerEnabled,
-      turnDurationSec: parsed.turnDurationSec ?? DEFAULT_SETTINGS.turnDurationSec,
-      turnSoundId: parsed.turnSoundId ?? DEFAULT_SETTINGS.turnSoundId
+      turnDurationSec: parsed.turnDurationSec ?? DEFAULT_SETTINGS.turnDurationSec
     };
   } catch {
     return DEFAULT_SETTINGS;

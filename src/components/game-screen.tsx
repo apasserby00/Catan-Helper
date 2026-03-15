@@ -1,7 +1,6 @@
 import { AnimatePresence, motion, MotionConfig } from "framer-motion";
 import { History, Pause, Play, Settings2, SkipForward, TimerReset, Trash2, Trophy } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
-import { ALERT_SOUNDS } from "@/config/audio-presets";
 import { useElapsedTime, useGame } from "@/app/game-store";
 import type { AppLanguage, GameHistoryRecord } from "@/types";
 import { getTurnReconciliation } from "@/lib/timer";
@@ -46,7 +45,6 @@ const copy = {
     musicStyleLabel: "Music track",
     turnReminderDescription: "Play a sound when it is time to pass the turn.",
     timePerTurnLabel: "Time per turn",
-    reminderSoundLabel: "Reminder sound",
     gameTime: "Game time",
     gameInProgress: "Game in progress",
     gamePaused: "Game paused",
@@ -95,7 +93,6 @@ const copy = {
     musicStyleLabel: "Müzik parçası",
     turnReminderDescription: "Sırayı geçme zamanı geldiğinde ses çal.",
     timePerTurnLabel: "Tur süresi",
-    reminderSoundLabel: "Hatırlatıcı sesi",
     gameTime: "Oyun süresi",
     gameInProgress: "Oyun devam ediyor",
     gamePaused: "Oyun duraklatıldı",
@@ -342,17 +339,6 @@ export function GameScreen() {
                       ]}
                     />
 
-                    <LabeledSelect
-                      label={t.reminderSoundLabel}
-                      value={settings.turnSoundId}
-                      onValueChange={(value) => {
-                        setSettings((current) => ({
-                          ...current,
-                          turnSoundId: value
-                        }));
-                      }}
-                      options={ALERT_SOUNDS.map((sound) => ({ value: sound.id, label: sound.label }))}
-                    />
                   </motion.div>
                 </SheetContent>
               </Sheet>
@@ -427,7 +413,7 @@ export function GameScreen() {
 
           <motion.div
             layout
-            className="sticky bottom-0 rounded-[1.75rem] border border-white/70 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.95),rgba(249,239,218,0.96)_55%,rgba(236,216,182,0.94))] p-3 shadow-float backdrop-blur"
+            className="mt-auto rounded-[1.75rem] border border-white/70 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.95),rgba(249,239,218,0.96)_55%,rgba(236,216,182,0.94))] p-3 shadow-float backdrop-blur"
             {...motionProps}
           >
             {!session && (

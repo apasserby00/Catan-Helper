@@ -14,8 +14,7 @@ describe("settings storage", () => {
     const settings = {
       ...DEFAULT_SETTINGS,
       musicEnabled: true,
-      turnDurationSec: 120,
-      turnSoundId: "horn"
+      turnDurationSec: 120
     };
 
     saveSettings(settings);

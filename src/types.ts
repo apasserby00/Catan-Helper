@@ -6,7 +6,6 @@ export interface AppSettings {
   musicEnabled: boolean;
   turnTimerEnabled: boolean;
   turnDurationSec: number;
-  turnSoundId: string;
 }
 
 export interface ActiveGameSession {
@@ -22,7 +21,6 @@ export interface ActiveGameSession {
   turnLastResumedAt: number | null;
   lastTurnAlertCycle: number;
   musicEnabled: boolean;
-  turnSoundId: string;
 }
 
 export interface GameHistoryRecord {
@@ -43,10 +41,4 @@ export interface TurnReconciliation {
   currentCycleElapsedMs: number;
   msUntilNextAlert: number | null;
   completedCycles: number;
-}
-
-export interface AlertSound {
-  id: string;
-  label: string;
-  frequencies: number[];
 }

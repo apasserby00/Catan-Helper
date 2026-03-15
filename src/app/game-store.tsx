@@ -142,7 +142,7 @@ export function GameProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    void audio.playTurnAlert(session.turnSoundId);
+    void audio.playTurnAlert();
     const updated = acknowledgeTurnAlert(session, reconciliation.completedCycles);
     setSession(updated);
     void saveActiveSession(updated);
@@ -247,7 +247,7 @@ export function GameProvider({ children }: PropsWithChildren) {
     setSession(nextSession);
     await saveActiveSession(nextSession);
     await audio.unlock();
-    await audio.playTurnAlert(nextSession.turnSoundId);
+    await audio.playTurnAlert();
   }
 
   async function finishGameWithWinner(winner: string) {
