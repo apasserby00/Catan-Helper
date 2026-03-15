@@ -38,12 +38,19 @@ export function createAudioController(): AudioController {
   }
 
   const context = new AudioContextCtor();
+  const masterGain = context.createGain();
+  const musicGain = context.createGain();
   const musicElement = new Audio(BACKGROUND_MUSIC_SRC);
   const alertElement = new Audio(TURN_ALERT_SRC);
+  const musicSource = context.createMediaElementSource(musicElement);
   musicElement.loop = true;
   musicElement.preload = "auto";
-  musicElement.volume = 0;
   alertElement.preload = "auto";
+  masterGain.gain.value = 1;
+  musicGain.gain.value = 0;
+  musicSource.connect(musicGain);
+  musicGain.connect(masterGain);
+  masterGain.connect(context.destination);
 
   let unlocked = false;
   let musicEnabled = false;
@@ -57,13 +64,13 @@ export function createAudioController(): AudioController {
 
   function rampMusicVolume(target: number, durationMs: number) {
     clearVolumeTimers();
-    const start = musicElement.volume;
+    const start = musicGain.gain.value;
     const steps = 6;
 
     for (let step = 1; step <= steps; step += 1) {
       const timer = window.setTimeout(() => {
         const progress = step / steps;
-        musicElement.volume = start + (target - start) * progress;
+        musicGain.gain.value = start + (target - start) * progress;
       }, (durationMs / steps) * step);
       volumeTimers.push(timer);
     }
@@ -105,7 +112,7 @@ export function createAudioController(): AudioController {
     clearVolumeTimers();
     musicElement.pause();
     musicElement.currentTime = 0;
-    musicElement.volume = 0;
+    musicGain.gain.value = 0;
 
     try {
       await musicElement.play();
@@ -120,7 +127,7 @@ export function createAudioController(): AudioController {
     clearVolumeTimers();
     musicElement.pause();
     musicElement.currentTime = 0;
-    musicElement.volume = 0;
+    musicGain.gain.value = 0;
     musicStarted = false;
   }
 

@@ -28,6 +28,10 @@ class FakeGainNode {
   connect() {}
 }
 
+class FakeMediaElementSourceNode {
+  connect() {}
+}
+
 class FakeOscillatorNode {
   type = "sine";
   frequency = {
@@ -88,6 +92,10 @@ class FakeAudioContext {
     return new FakeOscillatorNode() as unknown as OscillatorNode;
   }
 
+  createMediaElementSource() {
+    return new FakeMediaElementSourceNode() as unknown as MediaElementAudioSourceNode;
+  }
+
   async resume() {
     this.state = "running";
   }
@@ -117,7 +125,8 @@ describe("audio controller", () => {
     await vi.runAllTimersAsync();
     await alertPromise;
 
-    expect(music.volume).toBe(0.12);
+    const musicGain = FakeAudioContext.instances[0]?.gainNodes[1];
+    expect(musicGain?.gain.value).toBe(0.12);
 
     controller.teardown();
     vi.useRealTimers();
