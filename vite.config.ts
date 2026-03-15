@@ -4,7 +4,7 @@ import { VitePWA } from "vite-plugin-pwa";
 import path from "node:path";
 
 export default defineConfig(({ mode }) => ({
-  base: mode === "production" ? "/Catan-Helper/" : "/",
+  base: mode === "production" ? "/Catan-Clock/" : "/",
   plugins: [
     react(),
     VitePWA({
@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => ({
         theme_color: "#e8d7b9",
         background_color: "#f4ecdb",
         display: "standalone",
-        start_url: "/Catan-Helper/",
+        start_url: "/Catan-Clock/",
         icons: [
           {
             src: "catan-clock-logo.png",
