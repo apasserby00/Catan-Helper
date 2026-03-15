@@ -5,7 +5,7 @@ Catan Clock is a lightweight companion timer for games of Catan. It helps keep t
 **Live app:**  
 https://apasserby00.github.io/Catan-Clock/
 
-![Catan Clock screenshot](screenshots/catan-clock-1.png) ![Catan Clock screenshot](screenshots/catan-clock-2.png) ![Catan Clock screenshot](screenshots/catan-clock-4.png)
+![Catan Clock screenshot](screenshots/catan-clock-2.png) ![Catan Clock screenshot](screenshots/catan-clock-4.png)
 
 ---
 
